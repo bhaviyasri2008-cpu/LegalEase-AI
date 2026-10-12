@@ -12,18 +12,21 @@ st.set_page_config(
 st.title("📚 EduGenie - AI Learning Assistant")
 st.markdown("Powered by Google Gemini for NASSCOM FSP")
 
-# API Key
-api_key = st.secrets.get("GEMINI_API_KEY", "")
-
 # Sidebar
 st.sidebar.title("About EduGenie")
 st.sidebar.info(
     "Project for SB - Generative AI with Google Cloud Data"
 )
 
+# Get Gemini API Key
+try:
+    api_key = st.secrets.get("GEMINI_API_KEY", "")
+except Exception:
+    api_key = ""
+
 # Subject Selection
 subject = st.selectbox(
-    "📖 Subject select pannu",
+    "📖 Select Subject",
     ["General", "Science", "Maths", "Coding", "History", "English"]
 )
 
@@ -35,61 +38,56 @@ level = st.radio(
 
 # Question Input
 question = st.text_area(
-    "❓ Un kelvi enna?",
-    placeholder="Example: Photosynthesis enna?",
+    "❓ What is your question?",
+    placeholder="Example: What is photosynthesis?",
     height=100
 )
 
 # Explain Button
-if st.button("🚀 Explain pannu", use_container_width=True):
+if st.button("🚀 Explain", use_container_width=True):
 
     if not question.strip():
-        st.warning("Please un kelviya type pannu!")
+        st.warning("Please enter your question!")
 
     elif not api_key:
         st.error(
             "Gemini API Key missing! "
-            "Streamlit secrets-la API key add pannu."
+            "Please configure GEMINI_API_KEY in Streamlit Secrets."
         )
 
     else:
         try:
-            with st.spinner("Gemini yosikuthu... 🤔"):
+            with st.spinner("Gemini is thinking..."):
 
                 client = genai.Client(api_key=api_key)
 
                 prompt = f"""
-                You are EduGenie, a friendly AI tutor.
+You are EduGenie, a friendly AI tutor.
 
-                Student Level: {level}
-                Subject: {subject}
-                Student Question: {question}
+Student Level: {level}
+Subject: {subject}
+Student Question: {question}
 
-                Instructions:
-                1. Explain in simple Tamil + English mix (Tanglish).
-                2. Give a clear explanation.
-                3. Provide one easy example.
-                4. Give two quiz questions at the end.
-                5. Keep the answer suitable for the student's level.
-                """
+Instructions:
+1. Explain in simple Tamil and English (Tanglish).
+2. Give a clear explanation.
+3. Provide one easy example.
+4. Give two quiz questions at the end.
+5. Keep the answer suitable for the student's level.
+"""
 
                 response = client.models.generate_content(
                     model="gemini-2.5-flash",
                     contents=prompt
                 )
 
-                if response.text:
-                    st.success("Answer ready! 🎉")
-                    st.markdown("### 📚 EduGenie Answer")
-                    st.markdown(response.text)
-                else:
-                    st.warning(
-                        "Answer varala. Please try again."
-                    )
+            if response.text:
+                st.success("Answer ready! 🎉")
+                st.markdown("### 📚 EduGenie Answer")
+                st.markdown(response.text)
+            else:
+                st.warning("No answer received. Please try again.")
 
         except Exception as e:
-            st.error(
-                "Error occurred. Please check your API key, "
-                "internet connection, and Gemini API access."
-            )
-            st.caption(f"Technical details: {e}")
+            st.error("Something went wrong!")
+            st.write("Error details:", str(e))
