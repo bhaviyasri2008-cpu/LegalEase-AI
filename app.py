@@ -15,7 +15,7 @@ st.markdown("Powered by Google Gemini for NASSCOM FSP")
 # Sidebar
 st.sidebar.title("About EduGenie")
 st.sidebar.info(
-    "Project for SB - Generative AI with Google Cloud Data"
+    "Project for SB - Genai AI with Google Cloud Data"
 )
 
 # Get Gemini API Key
