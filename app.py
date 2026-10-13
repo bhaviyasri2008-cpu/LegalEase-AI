@@ -1,76 +1,44 @@
 import streamlit as st
-from google import genai
-st.set_page_config(
-    page_title="EduGenie",
-    page_icon="📚",
-    layout="centered",
-)
-def get_gemini_api_key() -> str:
-    # Replit Secrets/environment variable first
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    if api_key:
-        return api_key
-    # Also supports Streamlit Secrets
-    try:
-        return str(st.secrets.get("GEMINI_API_KEY", "")).strip()
-    except Exception:
-        return ""
-st.title("📚 EduGenie - AI Learning Assistant")
-st.markdown("Powered by Google Gemini for NASSCOM FSP")
-with st.sidebar:
-    st.title("About EduGenie")
-    st.info("Project for SB - GenAI with Google Cloud Data")
-subject = st.selectbox(
-    "📖 Select Subject",
-    ["General", "Science", "Maths", "Coding", "History", "English"],
-)
-level = st.radio(
-    "🎓 Student Level",
-    ["School Student", "College Student", "Beginner"],
-)
-question = st.text_area(
-    "❓ What is your question?",
-    placeholder="Example: What is photosynthesis?",
-    height=100,
-)
-if st.button("🚀 Explain", use_container_width=True):
-    if not question.strip():
-        st.warning("Please enter your question.")
-    else:
-        api_key = get_gemini_api_key()
-        if not api_key:
-            st.error(
-                "Gemini API key missing. Add GEMINI_API_KEY in Replit Secrets "
-                "or Streamlit Secrets."
-            )
-        else:
+import google.generativeai as genai
+from datetime import date
+
+genai.configure(api_key="YOUR_GEMINI_API_KEY")
+model = genai.GenerativeModel("gemini-1.5-flash")
+
+st.set_page_config(page_title="LegalEase", page_icon="⚖️")
+st.title("⚖️ LegalEase - AI Legal Document Generator")
+st.caption("Disclaimer: AI generated draft only. Lawyer review is mandatory!")
+
+col1, col2 = st.columns(2)
+with col1:
+    doc_type = st.selectbox("Document Type", ["Rental Agreement", "NDA - Non Disclosure", "Employment Offer Letter", "Affidavit", "Service Agreement"])
+with col2:
+    doc_date = st.date_input("Date", date.today())
+
+st.divider()
+st.subheader("Party Details")
+p1_name = st.text_input("Party 1 / Owner / Company Name")
+p1_address = st.text_input("Party 1 Address")
+p2_name = st.text_input("Party 2 / Tenant / Employee Name")
+p2_address = st.text_input("Party 2 Address")
+
+extra = st.text_area("Important Clauses / Salary / Rent Amount / Duration (Tamil/English la type pannalam)", height=120)
+
+if st.button("📄 Generate Legal Document"):
+    if p1_name and p2_name and extra:
+        with st.spinner("Drafting document..."):
             prompt = f"""
-You are EduGenie, a friendly AI tutor.
-Student Level: {level}
-Subject: {subject}
-Student Question: {question.strip()}
-Instructions:
-1. Explain in simple Tamil and English (Tanglish).
-2. Give a clear, student-level explanation.
-3. Provide one easy example.
-4. Give exactly two quiz questions at the end.
-5. Keep the answer suitable for the student's level.
-"""
-            try:
-                with st.spinner("Gemini is thinking..."):
-                    client = genai.Client(api_key=api_key)
-                    response = client.models.generate_content(
-                        model="gemini-2.5-flash",
-                        contents=prompt,
-                    )
-                answer = response.text
-                if answer and answer.strip():
-                    st.success("Answer ready! 🎉")
-                    st.markdown("### 📚 EduGenie Answer")
-                    st.markdown(answer)
-                else:
-                    st.warning("Gemini returned an empty answer. Please try again.")
-            except Exception as error:
-                st.error("Gemini couldn't generate an answer. Check the API key and try again.")
-                with st.expander("Technical error details"):
-                    st.code(str(error))
+            You are LegalEase AI. Draft a simple, India-legal compliant {doc_type} 
+            dated {doc_date} between {p1_name} ({p1_address}) and {p2_name} ({p2_address}).
+            Extra details: {extra}.
+            Structure: Title, Parties, Recitals, Terms & Conditions, Termination, Signature Section.
+            Language: Professional English. Add disclaimer at end: This is AI generated draft, consult advocate.
+            """
+            response = model.generate_content(prompt)
+            st.success("Document Generated!")
+            st.write(response.text)
+            st.download_button("Download as .txt", response.text, file_name=f"{doc_type}.txt")
+    else:
+        st.warning("Party names & details fill pannu da!")
+
+st.sidebar.markdown("**For:** NASSCOM FSP - Generative AI with Google Cloud Data")
