@@ -1,5 +1,5 @@
 import streamlit as st
-from google import genai
+import google.generativeai as genai
 from datetime import date
 
 # Page Configuration
@@ -18,7 +18,7 @@ st.caption(
 )
 
 # Gemini API Configuration
-api_key = st.secrets.get("GEMINI_API_KEY", "")
+api_key=  st.secrets.get("GEMINI_API_KEY", "")
 
 if not api_key:
     st.warning(
