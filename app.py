@@ -1,158 +1,84 @@
-import streamlit as st
-import google.generativeai as genai
+import os
 from datetime import date
 
-# Page Configuration
-st.set_page_config(
-    page_title="LegalEase",
-    page_icon="⚖️",
-    layout="centered"
-)
+import streamlit as st
+import google.generativeai as genai
 
-# App Title
+# ---------- Gemini setup ----------
+API_KEY = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+
+st.set_page_config(page_title="LegalEase", page_icon="⚖️")
 st.title("⚖️ LegalEase - AI Legal Document Generator")
+st.caption("Disclaimer: AI generated draft only. Lawyer review is mandatory!")
 
-st.caption(
-    "Disclaimer: AI-generated draft only. "
-    "Review by a qualified lawyer is recommended."
-)
-
-# Gemini API Configuration
-api_key=  st.secrets.get("GEMINI_API_KEY", "")
-
-if not api_key:
-    st.warning(
-        "Gemini API key is missing. "
-        "Please configure GEMINI_API_KEY in Streamlit secrets."
-    )
+if not API_KEY:
+    st.error("API key not found. Render > Environment la GOOGLE_API_KEY add pannunga.")
     st.stop()
 
-client = genai.Client(api_key=api_key)
+genai.configure(api_key=API_KEY)
+model = genai.GenerativeModel("gemini-3.8-flash")
 
-# Document Details
+# ---------- Inputs ----------
+DOC_TYPES = [
+    "Rental Agreement",
+    "NDA - Non Disclosure",
+    "Employment Offer Letter",
+    "Affidavit",
+    "Service Agreement",
+]
+
 col1, col2 = st.columns(2)
-
 with col1:
-    doc_type = st.selectbox(
-        "Document Type",
-        [
-            "Rental Agreement",
-            "NDA - Non-Disclosure Agreement",
-            "Employment Offer Letter",
-            "Affidavit",
-            "Service Agreement"
-        ]
-    )
-
+    doc_type = st.selectbox("Document Type", DOC_TYPES)
 with col2:
     doc_date = st.date_input("Date", date.today())
 
 st.divider()
-
-# Party Details
 st.subheader("Party Details")
-
 p1_name = st.text_input("Party 1 / Owner / Company Name")
 p1_address = st.text_input("Party 1 Address")
-
 p2_name = st.text_input("Party 2 / Tenant / Employee Name")
 p2_address = st.text_input("Party 2 Address")
 
 extra = st.text_area(
-    "Important Clauses / Salary / Rent Amount / Duration",
-    placeholder="Enter details in Tamil or English...",
-    height=120
+    "Extra details (rent amount, duration, salary, job role, etc.)",
+    height=120,
 )
 
-# Generate Document
-if st.button("📄 Generate Legal Document"):
-
-    if not p1_name.strip() or not p2_name.strip() or not extra.strip():
-        st.warning(
-            "Please enter both party names and the important details."
-        )
-
+# ---------- Generate ----------
+if st.button("Generate Document", type="primary"):
+    if not p1_name or not p2_name:
+        st.warning("Party 1 and Party 2 names kudunga.")
     else:
         prompt = f"""
-You are LegalEase, an AI assistant that drafts legal documents.
+You are a legal drafting assistant. Draft a professional {doc_type}.
 
-Draft a preliminary {doc_type} dated {doc_date}.
+Date: {doc_date}
+Party 1: {p1_name}, Address: {p1_address}
+Party 2: {p2_name}, Address: {p2_address}
+Additional details: {extra if extra else "None"}
 
-Party 1:
-Name: {p1_name}
-Address: {p1_address}
-
-Party 2:
-Name: {p2_name}
-Address: {p2_address}
-
-Additional details:
-{extra}
-
-Instructions:
-1. Use clear, professional English.
-2. Organize the document with suitable headings.
-3. Include the parties' details and relevant terms and conditions.
-4. Include termination clauses where appropriate.
-5. Include signature sections for the parties.
-6. Do not invent missing facts, laws, or legal requirements.
-7. Identify details that need verification by a lawyer.
-8. State that the document is an AI-generated draft and requires
-   review by a qualified Indian lawyer.
-9. Do not claim that the draft is legally compliant or enforceable
-   without verification.
-
-Generate the preliminary document.
+Rules:
+- Use clear numbered clauses with headings.
+- Include signature blocks for both parties at the end.
+- Use simple, formal language.
+- Do not invent facts that were not provided; leave blanks like ____ instead.
 """
+        with st.spinner("Document generate aagudhu..."):
+            try:
+                response = model.generate_content(prompt)
+                st.session_state["result"] = response.text
+            except Exception as e:
+                st.error(f"Error: {e}")
 
-        try:
-            with st.spinner("Drafting your document..."):
-
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt
-                )
-
-                if response.text:
-                    document = response.text
-
-                    st.success("Document Generated Successfully!")
-
-                    st.subheader("📄 Generated Legal Document")
-
-                    st.text_area(
-                        "Your Document",
-                        value=document,
-                        height=400
-                    )
-
-                    st.download_button(
-                        label="⬇️ Download as TXT",
-                        data=document,
-                        file_name="LegalEase_Document.txt",
-                        mime="text/plain"
-                    )
-
-                else:
-                    st.error(
-                        "The AI returned an empty response. Please try again."
-                    )
-
-        except Exception as e:
-            st.error(
-                "Unable to generate the document. "
-                "Please check your API key, internet connection, "
-                "and Gemini API access."
-            )
-            st.code(str(e))
-
-# Sidebar
-st.sidebar.title("About LegalEase")
-
-st.sidebar.info(
-    "AI-powered preliminary legal document drafting."
-)
-
-st.sidebar.markdown(
-    "**For:** NASSCOM FSP - Generative AI with Google Cloud Data"
-)
+# ---------- Output ----------
+if "result" in st.session_state:
+    st.divider()
+    st.subheader("Generated Document")
+    st.markdown(st.session_state["result"])
+    st.download_button(
+        "Download as .txt",
+        data=st.session_state["result"],
+        file_name=f"{doc_type.replace(' ', '_')}.txt",
+        mime="text/plain",
+    )
